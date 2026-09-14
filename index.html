@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Input Barang — Gudang</title>
+<style>
+:root{
+  --ink:#14181f; --canvas:#eef0f3; --surface:#fff;
+  --rule:#c9d0d9; --rule-soft:#e4e8ed; --accent:#1558c0;
+  --masuk:#0f7b3f; --keluar:#b3261e; --opname:#8a5a00; --muted:#5b6472;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--canvas);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;padding-bottom:env(safe-area-inset-bottom)}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* header */
+header{background:var(--ink);color:#fff;padding:10px 12px;display:flex;align-items:baseline;gap:8px;
+  position:sticky;top:0;z-index:20}
+header h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em;flex:1}
+header .ver{font-size:11px;color:#9aa4b2}
+.dot{width:8px;height:8px;border-radius:50%;background:#6b7280;flex:none}
+.dot.on{background:#3ddc84} .dot.off{background:#f04438}
+
+/* tabs */
+nav{display:flex;background:var(--surface);border-bottom:1px solid var(--rule);position:sticky;top:39px;z-index:19}
+nav button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:11px 4px;
+  color:var(--muted);font-size:13px;font-weight:500}
+nav button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+nav .badge{display:inline-block;min-width:17px;padding:0 4px;margin-left:4px;border-radius:9px;
+  background:var(--keluar);color:#fff;font-size:11px;line-height:17px}
+
+main{padding:12px;max-width:720px;margin:0 auto}
+.panel{background:var(--surface);border:1px solid var(--rule);margin-bottom:12px}
+.panel > h2{margin:0;padding:9px 12px;font-size:12px;font-weight:600;color:var(--muted);
+  border-bottom:1px solid var(--rule-soft);background:#f7f8fa}
+.body{padding:12px}
+
+label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px}
+.field{margin-bottom:12px}
+input[type=text],input[type=date],input[type=number],textarea,select{
+  width:100%;padding:10px;border:1px solid var(--rule);background:#fff;border-radius:2px}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+textarea{min-height:52px;resize:vertical}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;
+  border:1px solid var(--rule);background:#fff;border-radius:2px;font-size:14px;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;width:100%;padding:13px}
+.btn.ghost{color:var(--accent);border-color:var(--accent)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px}
+.row > *{flex:1;min-width:0}
+
+/* pencarian material */
+.pick{position:relative}
+.pick .row input{flex:1}
+.pick .row .btn{flex:none;width:46px;padding:0}
+.sugs{position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid var(--rule);
+  border-top:0;max-height:250px;overflow:auto}
+.sugs div{padding:9px 10px;border-bottom:1px solid var(--rule-soft)}
+.sugs div:active{background:#e8f0fd}
+.sugs b{display:block;font-size:13px;font-weight:600}
+.sugs span{font-size:12px;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* kartu material terpilih */
+.card{border:1px solid var(--rule);background:#f7f8fa;padding:10px;margin-bottom:12px}
+.card .kode{font-size:13px;font-weight:600}
+.card .desk{font-size:13px;margin:2px 0 4px}
+.card .meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+.stats{display:flex;border-top:1px solid var(--rule-soft);padding-top:8px}
+.stats div{flex:1}
+.stats span{display:block;font-size:11px;color:var(--muted)}
+.stats b{font-size:17px;font-weight:600}
+
+/* segmented jenis */
+.seg{display:flex;border:1px solid var(--rule)}
+.seg button{flex:1;background:#fff;border:0;border-right:1px solid var(--rule);padding:11px 2px;font-size:13px;color:var(--muted)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{color:#fff;font-weight:600}
+.seg button[data-j=MASUK][aria-pressed=true]{background:var(--masuk)}
+.seg button[data-j=KELUAR][aria-pressed=true]{background:var(--keluar)}
+.seg button[data-j=OPNAME][aria-pressed=true]{background:var(--opname)}
+
+/* list transaksi */
+.list{border-top:1px solid var(--rule-soft)}
+.item{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--rule-soft);align-items:flex-start}
+.item .q{font-weight:600;font-size:14px;min-width:56px;text-align:right}
+.q.plus{color:var(--masuk)} .q.minus{color:var(--keluar)} .q.set{color:var(--opname)}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:13px;font-weight:600}
+.item .t span{font-size:12px;color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .x{background:none;border:0;color:var(--muted);font-size:18px;padding:0 4px}
+.empty{padding:24px 12px;text-align:center;color:var(--muted);font-size:13px}
+
+/* skeleton */
+#skel{position:fixed;inset:0;background:var(--canvas);z-index:100;padding:0}
+#skel .sk-head{background:var(--ink);height:39px}
+#skel .sk-wrap{padding:14px}
+.sk{background:linear-gradient(90deg,#dfe3e8 25%,#eef1f4 50%,#dfe3e8 75%);background-size:400% 100%;
+  animation:sh 1.3s linear infinite;height:13px;margin-bottom:9px;border-radius:2px}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:0 0}}
+#skel .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+
+/* scanner */
+#scan{position:fixed;inset:0;background:#000;z-index:90;display:none;flex-direction:column}
+#scan video{flex:1;width:100%;object-fit:cover}
+#scan .frame{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  width:66vw;height:66vw;max-width:280px;max-height:280px;border:2px solid #fff;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+#scan .bar{padding:14px;background:#000;color:#fff;display:flex;gap:8px;align-items:center}
+#scan .bar span{flex:1;font-size:13px}
+
+/* toast */
+#toast{position:fixed;left:12px;right:12px;bottom:16px;z-index:120;display:none}
+#toast div{background:var(--ink);color:#fff;padding:11px 14px;font-size:13px;border-radius:2px}
+#toast div.err{background:var(--keluar)}
+</style>
+</head>
+<body>
+
+<div id="skel">
+  <div class="sk-head"></div>
+  <div class="sk-wrap">
+    <div class="sk" style="width:40%;height:11px"></div>
+    <div class="sk" style="height:44px"></div>
+    <div class="sk" style="width:30%;height:11px"></div>
+    <div class="sk" style="height:44px"></div>
+    <div class="sk" style="height:44px"></div>
+    <div class="sk" style="width:55%"></div>
+    <div class="sk" style="width:80%"></div>
+    <div class="sk" style="width:65%"></div>
+    <div class="cap">Menyiapkan data material…</div>
+  </div>
+</div>
+
+<header>
+  <h1>Input Barang</h1>
+  <span class="ver">V1-2026</span>
+  <span class="dot" id="net" title="status koneksi"></span>
+</header>
+
+<nav>
+  <button data-tab="input" aria-selected="true">Input</button>
+  <button data-tab="terakhir" aria-selected="false">Terakhir</button>
+  <button data-tab="antrian" aria-selected="false">Antrian<span class="badge" id="qb" hidden>0</span></button>
+</nav>
+
+<main>
+  <!-- TAB INPUT -->
+  <section id="tab-input">
+    <div class="panel">
+      <div class="body">
+        <div class="field pick">
+          <label for="q">Nomor material</label>
+          <div class="row">
+            <input type="text" id="q" placeholder="Ketik nomor atau kata kunci" autocomplete="off">
+            <button class="btn" id="btnScan" title="Scan QR / barcode">▣</button>
+          </div>
+          <div class="sugs" id="sugs" hidden></div>
+          <div class="hint" id="masterInfo"></div>
+        </div>
+
+        <div id="sel" hidden>
+          <div class="card">
+            <div class="kode" id="selKode"></div>
+            <div class="desk" id="selDesk"></div>
+            <div class="meta" id="selJen"></div>
+            <div class="stats">
+              <div><span>Stock sistem</span><b id="selSis">0</b></div>
+              <div><span>Stock aktual</span><b id="selAkt">0</b></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Jenis transaksi</label>
+            <div class="seg" id="seg">
+              <button data-j="MASUK" aria-pressed="false">Masuk</button>
+              <button data-j="KELUAR" aria-pressed="true">Keluar</button>
+              <button data-j="OPNAME" aria-pressed="false">Stock aktual</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field"><label for="tgl">Tanggal</label><input type="date" id="tgl"></div>
+            <div class="field"><label for="qty" id="qtyLab">Qty keluar</label><input type="number" id="qty" inputmode="decimal" min="0" step="any"></div>
+          </div>
+
+          <div class="field"><label for="ket">Keterangan</label><input type="text" id="ket" placeholder="mis. untuk Bengkel" autocomplete="off"></div>
+          <div class="field" id="fPen"><label for="pen">Penerima</label>
+            <input type="text" id="pen" list="penList" autocomplete="off"><datalist id="penList"></datalist>
+          </div>
+
+          <button class="btn primary" id="btnSave">Simpan transaksi</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Petugas &amp; data</h2>
+      <div class="body">
+        <div class="field"><label for="petugas">Nama petugas</label><input type="text" id="petugas" placeholder="Nama Anda" autocomplete="off"></div>
+        <div class="row">
+          <button class="btn ghost" id="btnSync">Perbarui master</button>
+          <button class="btn" id="btnSend">Kirim antrian</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB TERAKHIR -->
+  <section id="tab-terakhir" hidden>
+    <div class="panel">
+      <h2>Input terakhir</h2>
+      <div class="list" id="recent"></div>
+    </div>
+  </section>
+
+  <!-- TAB ANTRIAN -->
+  <section id="tab-antrian" hidden>
+    <div class="panel">
+      <h2>Belum terkirim</h2>
+      <div class="list" id="queue"></div>
+      <div class="body"><button class="btn primary" id="btnSend2">Kirim semua sekarang</button></div>
+    </div>
+  </section>
+</main>
+
+<div id="scan">
+  <video id="vid" playsinline muted></video>
+  <div class="frame"></div>
+  <div class="bar"><span id="scanMsg">Arahkan ke QR / barcode material</span><button class="btn" id="btnScanX">Tutup</button></div>
+</div>
+
+<div id="toast"><div></div></div>
+
+<script>
+/* ======================= KONFIGURASI ======================= */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw9wxRgqbdgAFPcrCrkwG_Ut8JjvIYw9eAM_xNaQeJNnn00cG5RgYsS_cKNutFwtefVlg/exec';   // ganti dengan URL /exec hasil deploy
+const TOKEN   = 'BMDP34';                 // harus sama dengan CFG.TOKEN di Code.gs
+/* =========================================================== */
+
+const LS = {
+  master:'mkb_master', stok:'mkb_stok', vm:'mkb_vm', vs:'mkb_vs',
+  petugas:'mkb_petugas', queue:'mkb_queue', recent:'mkb_recent',
+  tab:'mkb_tab_input', pen:'mkb_penerima'
+};
+const $ = s => document.querySelector(s);
+const g  = (k,d) => { try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } };
+const set = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+
+let MASTER = g(LS.master, []);      // [kode, deskripsi, satuan, stockSistem]
+let STOK   = g(LS.stok, {});        // { kode: stockAktual }
+let IDX    = null;
+let SEL    = null;
+let JENIS  = 'KELUAR';
+
+/* ------------------------------------------------ komunikasi GAS */
+async function api(action, payload){
+  const body = JSON.stringify(Object.assign({action, token:TOKEN}, payload||{}));
+  const res  = await fetch(GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body});
+  const j    = await res.json();
+  if(!j.ok) throw new Error(j.error || 'Permintaan ditolak server');
+  return j;
+}
+function online(ok){ $('#net').className = 'dot ' + (ok ? 'on' : 'off'); }
+
+function toast(msg, err){
+  const t = $('#toast'); t.firstElementChild.textContent = msg;
+  t.firstElementChild.className = err ? 'err' : '';
+  t.style.display = 'block';
+  clearTimeout(toast._t); toast._t = setTimeout(()=> t.style.display='none', 2600);
+}
+
+/* ------------------------------------------------ sinkron ringan */
+// transaksi yang belum terkirim tetap ikut menggeser angka di layar
+function applyQueue(){
+  g(LS.queue, []).forEach(t => {
+    STOK[t.material] = t.jenis === 'OPNAME' ? t.qty
+      : (Number(STOK[t.material]||0) + (t.jenis === 'MASUK' ? t.qty : -t.qty));
+  });
+}
+async function sync(silent){
+  try{
+    const r = await api('bootstrap', {vm:g(LS.vm,'0'), vs:g(LS.vs,'0')});
+    if(r.master){ MASTER = r.master; set(LS.master, MASTER); IDX = null; }
+    if(r.stok)  { STOK = r.stok; applyQueue(); set(LS.stok, STOK); }
+    set(LS.vm, r.vm); set(LS.vs, r.vs);
+    online(true);
+    if(!silent) toast('Data terbaru sudah masuk');
+  }catch(e){
+    online(false);
+    if(!silent) toast('Tidak bisa menghubungi server — data lokal dipakai', true);
+  }
+  renderMasterInfo();
+  if(SEL) showSel(SEL);
+}
+function renderMasterInfo(){
+  $('#masterInfo').textContent = MASTER.length
+    ? MASTER.length.toLocaleString('id-ID') + ' material tersedia'
+    : 'Master belum ada. Upload dulu lewat app Monitoring.';
+}
+
+/* ------------------------------------------------ pencarian material */
+function index(){
+  if(IDX) return IDX;
+  IDX = MASTER.map(m => ({k:m[0], d:m[1], s:m[2], sis:m[3], j:m[4]||'', key:(m[0]+' '+m[1]+' '+(m[4]||'')).toLowerCase()}));
+  return IDX;
+}
+function search(term){
+  const t = term.trim().toLowerCase();
+  if(!t) return [];
+  const parts = t.split(/\s+/), out = [], all = index();
+  for(let i=0;i<all.length && out.length<25;i++){
+    let ok = true;
+    for(let p=0;p<parts.length;p++) if(all[i].key.indexOf(parts[p]) < 0){ ok = false; break; }
+    if(ok) out.push(all[i]);
+  }
+  return out;
+}
+function renderSugs(list){
+  const box = $('#sugs');
+  if(!list.length){ box.hidden = true; box.innerHTML=''; return; }
+  box.innerHTML = list.map(m =>
+    '<div data-k="'+esc(m.k)+'"><b>'+esc(m.k)+'</b><span>'+esc(m.d)+(m.j?' · '+esc(m.j):'')+(m.s?' · '+esc(m.s):'')+'</span></div>'
+  ).join('');
+  box.hidden = false;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function pick(kode){
+  const m = index().find(x => x.k === kode);
+  if(!m){ toast('Nomor material ' + kode + ' tidak ada di master', true); return; }
+  SEL = m; $('#q').value = m.k; $('#sugs').hidden = true; showSel(m);
+  $('#qty').focus();
+}
+function showSel(m){
+  $('#sel').hidden = false;
+  $('#selKode').textContent = m.k;
+  $('#selDesk').textContent = m.d;
+  $('#selJen').textContent  = [m.j, m.s].filter(Boolean).join(' · ');
+  $('#selSis').textContent  = Number(m.sis||0).toLocaleString('id-ID');
+  $('#selAkt').textContent  = Number(STOK[m.k]||0).toLocaleString('id-ID');
+}
+
+/* ------------------------------------------------ jenis transaksi */
+function setJenis(j){
+  JENIS = j;
+  document.querySelectorAll('#seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.j === j));
+  $('#qtyLab').textContent = j==='MASUK' ? 'Qty masuk' : j==='KELUAR' ? 'Qty keluar' : 'Hasil hitung fisik';
+  $('#fPen').hidden = (j !== 'KELUAR');
+  $('#ket').placeholder = j==='OPNAME' ? 'mis. opname mingguan' : j==='MASUK' ? 'mis. terima dari PO 4500' : 'mis. untuk Bengkel';
+}
+
+/* ------------------------------------------------ simpan & antrian */
+function uuid(){ return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+function save(){
+  if(!SEL) return toast('Pilih material dulu', true);
+  const qty = Number($('#qty').value);
+  if(!(qty >= 0) || $('#qty').value === '') return toast('Isi qty dulu', true);
+  if(JENIS !== 'OPNAME' && qty <= 0) return toast('Qty harus lebih dari 0', true);
+  const petugas = $('#petugas').value.trim();
+  if(!petugas) return toast('Isi nama petugas dulu', true);
+  set(LS.petugas, petugas);
+
+  const row = {
+    id: uuid(), material: SEL.k, deskripsi: SEL.d,
+    tanggal: $('#tgl').value || new Date().toISOString().slice(0,10),
+    jenis: JENIS, qty: qty,
+    keterangan: $('#ket').value.trim(),
+    penerima: JENIS==='KELUAR' ? $('#pen').value.trim() : '',
+    petugas
+  };
+  if(row.penerima){
+    const pl = g(LS.pen, []); if(pl.indexOf(row.penerima) < 0){ pl.unshift(row.penerima); set(LS.pen, pl.slice(0,40)); renderPenList(); }
+  }
+
+  // stok lokal langsung menyesuaikan supaya angka di layar tidak menunggu server
+  STOK[row.material] = JENIS==='OPNAME' ? qty : (Number(STOK[row.material]||0) + (JENIS==='MASUK' ? qty : -qty));
+  set(LS.stok, STOK);
+
+  const rec = g(LS.recent, []); rec.unshift(Object.assign({sent:false}, row)); set(LS.recent, rec.slice(0,30));
+  const q = g(LS.queue, []); q.push(row); set(LS.queue, q);
+
+  $('#qty').value=''; $('#ket').value=''; $('#pen').value='';
+  showSel(SEL); renderQueue(); renderRecent();
+  toast('Tersimpan — ' + row.material);
+  flush(true);
+}
+
+async function flush(silent){
+  const q = g(LS.queue, []);
+  if(!q.length){ if(!silent) toast('Antrian kosong'); return; }
+  try{
+    const r = await api('saveTrx', {rows:q});
+    const sent = {}; (r.ids||[]).forEach(id => sent[id] = true);
+    set(LS.queue, q.filter(x => !sent[x.id]));
+    if(r.stok) { Object.assign(STOK, r.stok); set(LS.stok, STOK); }
+    if(r.vs) set(LS.vs, r.vs);
+    const rec = g(LS.recent, []).map(x => sent[x.id] ? Object.assign(x,{sent:true}) : x);
+    set(LS.recent, rec);
+    online(true); renderQueue(); renderRecent();
+    if(SEL) showSel(SEL);
+    if(!silent) toast(r.saved + ' transaksi terkirim');
+  }catch(e){
+    online(false);
+    if(!silent) toast('Belum terkirim — tersimpan di antrian', true);
+  }
+}
+
+/* ------------------------------------------------ daftar */
+function qtyCell(t){
+  const cls = t.jenis==='MASUK' ? 'plus' : t.jenis==='KELUAR' ? 'minus' : 'set';
+  const pre = t.jenis==='MASUK' ? '+' : t.jenis==='KELUAR' ? '−' : '=';
+  return '<div class="q '+cls+'">'+pre+Number(t.qty).toLocaleString('id-ID')+'</div>';
+}
+function renderRecent(){
+  const rec = g(LS.recent, []), el = $('#recent');
+  if(!rec.length){ el.innerHTML = '<div class="empty">Belum ada input. Mulai dari tab Input.</div>'; return; }
+  el.innerHTML = rec.map(t =>
+    '<div class="item">'+qtyCell(t)+'<div class="t"><b>'+esc(t.material)+'</b>'+
+    '<span>'+esc(t.deskripsi||'')+'</span>'+
+    '<span>'+esc(t.tanggal)+(t.penerima?' · '+esc(t.penerima):'')+(t.keterangan?' · '+esc(t.keterangan):'')+
+    (t.sent?'':' · <b style="color:var(--keluar);font-weight:600">antri</b>')+'</span></div></div>'
+  ).join('');
+}
+function renderQueue(){
+  const q = g(LS.queue, []), el = $('#queue'), b = $('#qb');
+  b.hidden = !q.length; b.textContent = q.length;
+  if(!q.length){ el.innerHTML = '<div class="empty">Semua transaksi sudah terkirim.</div>'; return; }
+  el.innerHTML = q.map(t =>
+    '<div class="item">'+qtyCell(t)+'<div class="t"><b>'+esc(t.material)+'</b>'+
+    '<span>'+esc(t.tanggal)+' · '+esc(t.deskripsi||'')+'</span></div>'+
+    '<button class="x" data-del="'+t.id+'" title="Hapus dari antrian">×</button></div>'
+  ).join('');
+}
+function renderPenList(){
+  $('#penList').innerHTML = g(LS.pen, []).map(p => '<option value="'+esc(p)+'">').join('');
+}
+
+/* ------------------------------------------------ scan QR */
+let stream = null, raf = null;
+async function scanStart(){
+  const box = $('#scan'); box.style.display = 'flex';
+  $('#scanMsg').textContent = 'Menyalakan kamera…';
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    const v = $('#vid'); v.srcObject = stream; await v.play();
+    $('#scanMsg').textContent = 'Arahkan ke QR / barcode material';
+    if('BarcodeDetector' in window){
+      const det = new BarcodeDetector({formats:['qr_code','code_128','code_39','ean_13','itf']});
+      const loop = async () => {
+        if(!stream) return;
+        try{ const c = await det.detect(v); if(c.length) return scanHit(c[0].rawValue); }catch(e){}
+        raf = requestAnimationFrame(loop);
+      };
+      loop();
+    } else {
+      await loadJsQR();
+      const cv = document.createElement('canvas'), cx = cv.getContext('2d', {willReadFrequently:true});
+      const loop = () => {
+        if(!stream) return;
+        if(v.videoWidth){
+          cv.width = v.videoWidth; cv.height = v.videoHeight;
+          cx.drawImage(v,0,0,cv.width,cv.height);
+          const d = cx.getImageData(0,0,cv.width,cv.height);
+          const code = window.jsQR(d.data, d.width, d.height);
+          if(code && code.data) return scanHit(code.data);
+        }
+        raf = requestAnimationFrame(loop);
+      };
+      loop();
+    }
+  }catch(e){
+    $('#scanMsg').textContent = 'Kamera tidak bisa dibuka. Ketik nomornya manual.';
+  }
+}
+function loadJsQR(){
+  return new Promise((ok, no) => {
+    if(window.jsQR) return ok();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.onload = ok; s.onerror = () => no(new Error('jsQR gagal dimuat'));
+    document.head.appendChild(s);
+  });
+}
+function scanHit(text){
+  const kode = String(text).trim().split(/[\s|;,]/)[0];
+  scanStop();
+  if(navigator.vibrate) navigator.vibrate(40);
+  $('#q').value = kode;
+  const m = index().find(x => x.k === kode);
+  if(m) pick(kode); else { renderSugs(search(kode)); toast('Nomor '+kode+' tidak ada di master', true); }
+}
+function scanStop(){
+  if(raf) cancelAnimationFrame(raf); raf = null;
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $('#scan').style.display = 'none';
+}
+
+/* ------------------------------------------------ tab */
+function showTab(name){
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
+  ['input','terakhir','antrian'].forEach(t => $('#tab-'+t).hidden = (t !== name));
+  if(name === 'terakhir') renderRecent();
+  if(name === 'antrian')  renderQueue();
+  set(LS.tab, name);
+  window.scrollTo(0,0);
+}
+
+/* ------------------------------------------------ event */
+$('#q').addEventListener('input', e => { SEL = null; $('#sel').hidden = true; renderSugs(search(e.target.value)); });
+$('#sugs').addEventListener('click', e => { const d = e.target.closest('[data-k]'); if(d) pick(d.dataset.k); });
+$('#seg').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setJenis(b.dataset.j); });
+$('#btnSave').addEventListener('click', save);
+$('#btnSync').addEventListener('click', () => sync(false));
+$('#btnSend').addEventListener('click', () => flush(false));
+$('#btnSend2').addEventListener('click', () => flush(false));
+$('#btnScan').addEventListener('click', scanStart);
+$('#btnScanX').addEventListener('click', scanStop);
+$('#queue').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if(!b) return;
+  set(LS.queue, g(LS.queue,[]).filter(x => x.id !== b.dataset.del)); renderQueue();
+});
+document.querySelector('nav').addEventListener('click', e => { const b = e.target.closest('button'); if(b) showTab(b.dataset.tab); });
+document.addEventListener('click', e => { if(!e.target.closest('.pick')) $('#sugs').hidden = true; });
+window.addEventListener('online',  () => { online(true); flush(true); });
+window.addEventListener('offline', () => online(false));
+
+/* ------------------------------------------------ start */
+(function init(){
+  $('#tgl').value = new Date().toISOString().slice(0,10);
+  $('#petugas').value = g(LS.petugas, '') || '';
+  setJenis('KELUAR'); renderMasterInfo(); renderPenList(); renderQueue(); renderRecent();
+  showTab(g(LS.tab, 'input'));
+  online(navigator.onLine);
+  sync(true).then(() => flush(true));
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') sync(true).then(() => flush(true));
+  });
+  setTimeout(() => { $('#skel').remove(); }, 1600);
+})();
+</script>
+</body>
+</html>
